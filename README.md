@@ -1,4 +1,4 @@
-# Nuro Bot — Setup Guide
+# Nuro Bot — Free Deployment on PythonAnywhere
 
 ## What this does
 Every day, automatically:
@@ -7,48 +7,63 @@ Every day, automatically:
 3. Generates one concrete task from it
 4. Posts it to your Telegram channel
 
-## What you need (2 free accounts)
-1. **Telegram bot token** — from @BotFather (you already have this, or are getting it)
-2. **Anthropic API key** — free to create at https://console.anthropic.com (used to write the simplified summaries and tasks)
+`/start` and `/postnow` also work as live commands via webhook.
 
-## Setup (one time)
+## What you need
+1. Telegram bot token (from @BotFather) — already have this
+2. Anthropic API key (console.anthropic.com) — needs small billing credit
+3. A free PythonAnywhere account (no card needed): https://www.pythonanywhere.com/registration/register/beginner/
 
-1. Copy `.env.example` to `.env` and fill in your real values:
-   - `TELEGRAM_BOT_TOKEN` — from BotFather
-   - `TELEGRAM_CHANNEL_ID` — your channel's @username, e.g. `@nuro_channel`
-     - **Important:** add your bot as an *admin* of the channel first, or it can't post
-   - `ANTHROPIC_API_KEY` — from console.anthropic.com
-   - `POST_HOUR` / `POST_MINUTE` — what time to post daily (24h format)
-   - `TIMEZONE` — e.g. `Asia/Tashkent`
+## Setup on PythonAnywhere (one time, ~15 min)
 
-2. Install dependencies:
+1. **Upload the code**
+   - In PythonAnywhere, open a **Bash console**
+   - Run: `git clone https://github.com/diyorbdev/nuro.git`
+
+2. **Install dependencies**
    ```
-   pip install -r requirements.txt
+   cd nuro
+   pip install --user -r requirements.txt
    ```
 
-3. Test it locally first:
+3. **Set your secrets**
+   - Copy `.env.example` to `.env`: `cp .env.example .env`
+   - Edit it (`nano .env`) and fill in your real `TELEGRAM_BOT_TOKEN`,
+     `TELEGRAM_CHANNEL_ID` (`@nurobrain`), and `ANTHROPIC_API_KEY`
+
+4. **Create the free Web App**
+   - Go to the **Web** tab → **Add a new web app**
+   - Choose **Flask**, Python 3.10
+   - Set the source code path to `/home/YOURUSERNAME/nuro`
+   - Set the WSGI file to point at `app.py`'s `app` object (PythonAnywhere gives
+     you a template file — replace its content to import `app` from `app.py`)
+   - Click **Reload** on the Web tab
+
+5. **Tell Telegram where your webhook is** (one-time)
+   Run this in a Bash console, replacing YOURUSERNAME and your real token:
    ```
-   python main.py
+   curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://YOURUSERNAME.pythonanywhere.com/webhook"
    ```
-   Then message your bot `/postnow` on Telegram to trigger an immediate test post.
+   You should see `"ok":true` in the response.
 
-## Making it run 24/7 (free hosting)
+6. **Set up the free daily task**
+   - Go to the **Tasks** tab → create a new scheduled task
+   - Command: `python3.10 /home/YOURUSERNAME/nuro/daily_post.py`
+   - Set the time you want it to post daily
 
-Your laptop needs to be on for the bot to run — for it to post automatically every
-day without you touching it, deploy it to a free always-on host. Easiest option:
+7. **Test it**
+   - Message your bot `/start` on Telegram — you should get an instant reply
+   - Message `/postnow` — check your channel for the post
 
-**Railway.app** (free tier, simplest):
-1. Create account at railway.app, connect your GitHub
-2. Push this folder to a new GitHub repo
-3. In Railway: "New Project" → "Deploy from GitHub repo" → select it
-4. Add your `.env` values under Railway's "Variables" tab (never upload `.env` itself to GitHub)
-5. Done — it now runs continuously in the cloud
-
-I can walk you through any of these steps in more detail when you're ready.
+## Keeping it alive
+Free PythonAnywhere web apps need you to log in and click "Run until 3 months
+from today" on the Web tab every 3 months, or the app goes offline. Takes 5 seconds.
 
 ## Files
-- `main.py` — the bot itself, scheduler, entry point
+- `app.py` — Flask webhook app (handles /start, /postnow, live on PythonAnywhere)
+- `daily_post.py` — script triggered by PythonAnywhere's free daily scheduled task
 - `paper_search.py` — finds new papers (rotates topics, avoids repeats)
 - `content_generator.py` — Claude-powered translation + task generation
+- `main.py` — alternate version for continuous hosting (Railway/etc.) if you ever upgrade
 - `requirements.txt` — dependencies
 - `.env.example` — template for your secrets (rename to `.env`, fill in, never share)
