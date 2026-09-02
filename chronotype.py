@@ -10,8 +10,16 @@ a person is biologically a "morning type," "evening type," or in between.
 import os
 import requests as http
 
-BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
+BOT_TOKEN = None
+TELEGRAM_API = None
+
+
+def _ensure_token():
+    """Lazily reads the bot token so import order relative to load_dotenv() doesn't matter."""
+    global BOT_TOKEN, TELEGRAM_API
+    if BOT_TOKEN is None:
+        BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+        TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 # In-memory session state: {telegram_id: {"q": current_index, "score": running_total}}
 # Fine for a small/medium user base on a single-process free-tier host.
@@ -61,6 +69,7 @@ QUESTIONS = [
 
 
 def _send(chat_id, text, reply_markup=None):
+    _ensure_token()
     payload = {"chat_id": chat_id, "text": text}
     if reply_markup:
         payload["reply_markup"] = reply_markup
@@ -68,6 +77,7 @@ def _send(chat_id, text, reply_markup=None):
 
 
 def _edit(chat_id, message_id, text, reply_markup=None):
+    _ensure_token()
     payload = {"chat_id": chat_id, "message_id": message_id, "text": text}
     if reply_markup:
         payload["reply_markup"] = reply_markup

@@ -13,6 +13,8 @@ from flask import Flask, request
 from dotenv import load_dotenv
 import requests as http
 
+load_dotenv()
+
 import db
 import buddy
 import admin as admin_module
@@ -20,8 +22,6 @@ import leaderboard as leaderboard_module
 import chronotype
 from paper_search import get_daily_paper
 from content_generator import build_daily_post
-
-load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -87,7 +87,11 @@ def webhook():
         is_admin=telegram_id in ADMIN_IDS,
     )
 
-    if is_new:
+    if text.startswith("/start chronotype"):
+        if is_new:
+            handle_start(chat_id, telegram_id)
+        chronotype.start_chronotype_quiz(chat_id, telegram_id)
+    elif is_new:
         handle_start(chat_id, telegram_id)
     elif text == "/start":
         handle_start(chat_id, telegram_id, already_registered=True)
