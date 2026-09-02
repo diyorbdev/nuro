@@ -17,6 +17,7 @@ import db
 import buddy
 import admin as admin_module
 import leaderboard as leaderboard_module
+import chronotype
 from paper_search import get_daily_paper
 from content_generator import build_daily_post
 
@@ -54,6 +55,19 @@ def send_photo(chat_id, photo_file_id, caption=None):
 @app.route("/webhook", methods=["POST"])
 def webhook():
     update = request.get_json(force=True)
+
+    # Handle inline keyboard button presses (used by the chronotype quiz)
+    callback = update.get("callback_query")
+    if callback:
+        cb_chat_id = callback["message"]["chat"]["id"]
+        cb_message_id = callback["message"]["message_id"]
+        cb_telegram_id = callback["from"]["id"]
+        cb_data = callback.get("data", "")
+        http.post(f"{TELEGRAM_API}/answerCallbackQuery", data={"callback_query_id": callback["id"]}, timeout=10)
+        if cb_data.startswith("meq:"):
+            chronotype.handle_chronotype_callback(cb_chat_id, cb_telegram_id, cb_message_id, cb_data)
+        return "ok"
+
     message = update.get("message", {})
     chat_id = message.get("chat", {}).get("id")
     from_user = message.get("from", {})
@@ -91,6 +105,8 @@ def webhook():
         send_message(chat_id, "Fetching a research paper for the channel...")
         run_daily_post()
         send_message(chat_id, "Done — check the channel.")
+    elif text == "/chronotype":
+        start_chronotype_quiz(chat_id, telegram_id)
     elif photos:
         handle_photo_submission(chat_id, telegram_id, photos)
     elif text:
@@ -116,7 +132,8 @@ def handle_start(chat_id, telegram_id, already_registered=False):
         "Commands:\n"
         "/challenge — see this week's challenge\n"
         "/mystreak — check your current streak\n"
-        "/leaderboard — see this week's top performers\n\n"
+        "/leaderboard — see this week's top performers\n"
+        "/chronotype — take the 19-question sleep-type test\n\n"
         "Let's find you an accountability buddy...",
     )
 
